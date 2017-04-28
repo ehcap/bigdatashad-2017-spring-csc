@@ -1,0 +1,8 @@
+@startuml
+control cron
+cron -> JobMapReduce: Start (yesterday)
+activate JobMapReduce
+JobMapReduce -> Map : Filter 200 status
+Map ->
+Map -> Reduce
+@enduml
