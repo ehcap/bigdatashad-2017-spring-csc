@@ -4,13 +4,15 @@ import os
 import datetime
 import re
 
+
 from pyspark import SparkConf, SparkContext
 
 def main():
-    conf = SparkConf().setAppName("User sessions")
+    conf = SparkConf().setMaster('local[3]')
     sc = SparkContext(conf=conf)
 
-    log = sc.textFile("/user/sandello/logs/access.log.2016-10-07")
+
+    log = sc.textFile("testlog.log")
 
     fields = log.map(extract_fields).filter(lambda x: x is not None)
     print "**********\nLog rows count: %d\n**********" % fields.count()
@@ -38,9 +40,9 @@ def extract_fields(line):
     ip = match.group(1)
     date = datetime.datetime.strptime(match.group(2), "%d/%b/%Y:%H:%M:%S")
     url = match.group(4)
-    timestamp = int(date.strftime("%s"))
-    return ((ip, timestamp), (timestamp, 1))
-
+    #timestamp = int(date.strftime("%s"))
+    #return ((ip, timestamp), (timestamp, 1))
+    return ((ip, 100), (100, 1))
 
 def tuple_partitioner(pair):
     return hash(pair[0])
