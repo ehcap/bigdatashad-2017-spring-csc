@@ -1,4 +1,5 @@
 ADD JAR /opt/cloudera/parcels/CDH-5.9.0-1.cdh5.9.0.p0.23/lib/hive/lib/hive-contrib.jar;
+drop table if exists access_log_raw;
 CREATE EXTERNAL TABLE access_log_raw (
     ip STRING,
     date STRING,
@@ -11,8 +12,7 @@ CREATE EXTERNAL TABLE access_log_raw (
 PARTITIONED BY (day string)
 ROW FORMAT SERDE 'org.apache.hadoop.hive.contrib.serde2.RegexSerDe'
 WITH SERDEPROPERTIES (
-    "input.regex" = "([\\d\\.:]+) - - \\[(\\S+) [^\"]+\\] \"\\w+ ([^\"]+) HTTP/[\\d\\.]+\" (\\d+) \\d+ \"([^\"]+)\" \"(.*?)\""
-                     ( [\d\ .:]+) - -  \[( \S+ [^"]+)\] "(\w+) ([^"]+) (HTTP/[\d\.]+)" (\d+) (\d+) "([^"]+)" "([^"]+)"
+    "input.regex" = "([\\d\\.:]+) - - \\[(\\S+) [^\"]+\\] \"\\w+ ([^\"]+) HTTP/[\\d\\.]+\" (\\d+) (\\d+) \"([^\"]+)\" \"(.*?)\""
 )
 STORED AS TEXTFILE;
 
@@ -28,7 +28,7 @@ ALTER TABLE access_log_raw ADD PARTITION(day='2017-04-09') LOCATION '/user/bigda
 
 SET hive.exec.compress.output=true;
 SET io.seqfile.compression.type=BLOCK;
-
+drop table if exists parsed_text_log;
 CREATE TABLE parsed_text_log (
     ip STRING,
     date TIMESTAMP,
@@ -48,9 +48,10 @@ SELECT
     CAST(status AS smallint),
     url,
     CAST(response_size AS smallint),
-    referer
+    referer, user_agent
 FROM access_log_raw;
 
+drop table if exists part_parsed_text_log;
 CREATE TABLE part_parsed_text_log (
     ip STRING,
     date TIMESTAMP,
@@ -76,17 +77,3 @@ SELECT
     referer, user_agent, day
 FROM access_log_raw distribute by day;
 
-Partition sgerasimov.part_parsed_text_log{day=2017-04-01} stats: [numFiles=1, numRows=7673862, totalSize=1414314908, rawDataSize=1293801377]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-02} stats: [numFiles=1, numRows=8021513, totalSize=1477749111, rawDataSize=1351788704]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-03} stats: [numFiles=1, numRows=11992823, totalSize=2210798512, rawDataSize=2022452008]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-04} stats: [numFiles=1, numRows=13686305, totalSize=2524135373, rawDataSize=2309177160]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-05} stats: [numFiles=1, numRows=14154107, totalSize=2609737318, rawDataSize=2387441392]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-06} stats: [numFiles=1, numRows=12773258, totalSize=2354138077, rawDataSize=2153547354]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-07} stats: [numFiles=1, numRows=11651976, totalSize=2147478737, rawDataSize=1964487091]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-08} stats: [numFiles=1, numRows=7669210, totalSize=1412988762, rawDataSize=1292553688]
-Partition sgerasimov.part_parsed_text_log{day=2017-04-09} stats: [numFiles=1, numRows=7875214, totalSize=1450754268, rawDataSize=1327088714]
-MapReduce Jobs Launched:
-Stage-Stage-1: Map: 11  Reduce: 17   Cumulative CPU: 7714.94 sec   HDFS Read: 1079357297 HDFS Write: 17602096122 SUCCESS
-Total MapReduce CPU Time Spent: 0 days 2 hours 8 minutes 34 seconds 940 msec
-
-select min(ip) from parsed_text_log where date >='2017-04-01' and date < '2017-04-02'
